@@ -1,0 +1,9 @@
+{
+  "rules": {
+    ".read": "now < 1651602600000",
+    ".write": "now < 1651602600000",
+    "users": {
+      ".indexOn": ["totalThumbs"]
+    }
+  }
+}

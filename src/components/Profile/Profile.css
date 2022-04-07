@@ -1,0 +1,10 @@
+.site-layout .site-layout-background {
+  background: #fff;
+}
+.view {
+  height: 100vh;
+}
+
+.profile_img {
+  border-radius: 50%;
+}
