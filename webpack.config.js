@@ -32,22 +32,10 @@ module.exports = {
         test: /\.(jpg|jpeg|png)$/i,
         use: "url-loader",
       },
-      // {
-      //   test: /\.less$/,
-      //   use: [
-      //     { loader: "style-loader" },
-      //     { loader: "css-loader" },
-      //     {
-      //       loader: "less-loader",
-      //       option: {
-      //         javascriptEnabled: true,
-      //       },
-      //     },
-      //   ],
-      // },
     ],
   },
   plugins: [htmlPlugin],
+
   devServer: {
     host: "localhost",
     port: port,

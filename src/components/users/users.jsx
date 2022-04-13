@@ -1,6 +1,11 @@
 import React from "react";
-import { Card, Avatar, Space, Button, Spin } from "antd";
-import { DislikeTwoTone, HeartTwoTone, LikeTwoTone } from "@ant-design/icons";
+import { Card, Avatar, Space, Button, Spin, message } from "antd";
+import {
+  DislikeTwoTone,
+  HeartTwoTone,
+  LikeFilled,
+  LikeTwoTone,
+} from "@ant-design/icons";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { auth } from "../firebase.js";
 import { database } from "../firebase.js";
@@ -19,70 +24,161 @@ import {
 } from "firebase/database";
 
 const { Meta } = Card;
-// onChildChanged(ref(database, "/users/"), (snap) => {
-//   console.log(snap);
-// });
+
 export default function Users(props) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [seed, setSeed] = useState("z");
+  const [likedTo, setLikedTo] = useState([]);
+  const [disLikedTo, setDisLikedTo] = useState([]);
+
+  useEffect(() => {
+    try {
+      get(ref(database, `/users/${auth.currentUser.uid}/reacted`)).then(
+        (snap) => {
+          let result = snap.val();
+          if (result) {
+            if (result.likeTo) setLikedTo(result.likeTo);
+            if (result.disLikedTo) setDisLikedTo(result.disLikedTo);
+          }
+        }
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  }, []);
 
   function likeProfile(user) {
-    const uid = user.totalThumbs.split("_")[1];
+    const uid = user.likeSearchQuery.split("_")[1];
+    // check if user has been already reacted.
+
+    // check in reacted liked.
+    let isAlredyLiked = likedTo.includes(uid);
+    if (isAlredyLiked) {
+      message.error("you have already liked");
+      return;
+    }
+    let isAlredyDisLiked = disLikedTo.includes(uid);
+
     // console.log(uid);
     const userReference = ref(database, `/users/${uid}`);
     let like = user.like + 1;
-    let total = String(like + user.dislike);
-    let prefixLength = 10 - total.length;
+
+    let prefixLength = 10 - String(like).length;
     let prefix = "";
     for (let i = 1; i <= prefixLength; i++) {
       prefix += "0";
     }
-    let totalThumbs = prefix + total + "_" + uid;
-    update(userReference, { like: like, totalThumbs: totalThumbs })
-      .then(() => {
+    let likeSearchQuery = prefix + String(like) + "_" + uid;
+
+    try {
+      let updateObj = {
+        like: like,
+        likeSearchQuery: likeSearchQuery,
+        dislike: isAlredyDisLiked ? user.dislike - 1 : user.dislike,
+      };
+      update(userReference, updateObj).then(() => {
         console.log("user updated");
         setUsers((prevState) => {
           return prevState.map((obj) =>
-            obj.totalThumbs.split("_")[1] === uid
-              ? Object.assign(obj, { like: like, totalThumbs: totalThumbs })
+            obj.likeSearchQuery.split("_")[1] === uid
+              ? Object.assign(obj, updateObj)
               : obj
           );
         });
-      })
-      .catch((e) => {
-        console.log(err);
       });
+    } catch (err) {
+      console.log(err);
+    }
+
+    try {
+      let like_arr = likedTo;
+      like_arr.push(uid);
+      let dislike_arr = disLikedTo;
+      if (isAlredyDisLiked) {
+        dislike_arr = dislike_arr.filter((users_uid) => users_uid != uid);
+      }
+
+      update(ref(database, `/users/${auth.currentUser.uid}/reacted`), {
+        likeTo: like_arr,
+        disLikedTo: dislike_arr,
+      }).then(() => {
+        console.log("reaction has been saved");
+        message.success("succesfully liked");
+        setLikedTo(like_arr);
+        if (isAlredyDisLiked) {
+          setDisLikedTo(dislike_arr);
+        }
+      });
+    } catch (err) {
+      console.log(err);
+    }
   }
   function dislikeProfile(user) {
-    const uid = user.totalThumbs.split("_")[1];
+    const uid = user.likeSearchQuery.split("_")[1];
     // console.log(uid);
+
+    let isAlredyDisLiked = disLikedTo.includes(uid);
+    if (isAlredyDisLiked) {
+      message.error("you have already disliked");
+      return;
+    }
+    let isAlredyLiked = likedTo.includes(uid);
+
     const userReference = ref(database, `/users/${uid}`);
     let dislike = user.dislike + 1;
-    let total = String(dislike + user.like);
-    let prefixLength = 10 - total.length;
+    let prefixLength = 10 - String(dislike).length;
     let prefix = "";
     for (let i = 1; i <= prefixLength; i++) {
       prefix += "0";
     }
-    let totalThumbs = prefix + total + "_" + uid;
-    update(userReference, { dislike: dislike, totalThumbs: totalThumbs })
-      .then(() => {
+    let like = user.like;
+    if (isAlredyLiked) like -= 1;
+    let likeSearchQuery = prefix + String(like) + "_" + uid;
+
+    try {
+      let updateObj = {
+        like: like,
+        likeSearchQuery: likeSearchQuery,
+        dislike: dislike,
+      };
+      update(userReference, updateObj).then(() => {
         console.log("user updated");
         setUsers((prevState) => {
           return prevState.map((obj) =>
-            obj.totalThumbs.split("_")[1] === uid
-              ? Object.assign(obj, {
-                  dislike: dislike,
-                  totalThumbs: totalThumbs,
-                })
+            obj.likeSearchQuery.split("_")[1] === uid
+              ? Object.assign(obj, updateObj)
               : obj
           );
         });
-      })
-      .catch((e) => {
-        console.log(err);
       });
+    } catch (err) {
+      console.log(err);
+    }
+
+    try {
+      let like_arr = likedTo;
+      if (isAlredyLiked) {
+        like_arr = like_arr.filter((users_uid) => users_uid != uid);
+      }
+
+      let dislike_arr = disLikedTo;
+      dislike_arr.push(uid);
+
+      update(ref(database, `/users/${auth.currentUser.uid}/reacted`), {
+        likeTo: like_arr,
+        disLikedTo: dislike_arr,
+      }).then(() => {
+        console.log("reaction has been saved");
+        message.success("successfully disliked");
+        setDisLikedTo(dislike_arr);
+        if (isAlredyLiked) {
+          setLikedTo(like_arr);
+        }
+      });
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   const userRef = useRef();
@@ -95,7 +191,7 @@ export default function Users(props) {
       userRef.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
           // console.log("visible");
-          setSeed(users[users.length - 1].totalThumbs);
+          setSeed(users[users.length - 1].likeSearchQuery);
         }
       });
       // console.log(userRef.current);
@@ -110,7 +206,7 @@ export default function Users(props) {
     // console.log(seed);
     const userReference = query(
       ref(database, "/users"),
-      orderByChild("totalThumbs"),
+      orderByChild("likeSearchQuery"),
       endBefore(seed),
       limitToLast(7)
     );
@@ -128,7 +224,7 @@ export default function Users(props) {
         }
 
         user_array.sort((a, b) => {
-          if (a.totalThumbs > b.totalThumbs) return -1;
+          if (a.likeSearchQuery > b.likeSearchQuery) return -1;
           else return 0;
         });
         // console.log(user_array);

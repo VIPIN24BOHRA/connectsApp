@@ -38,15 +38,6 @@ export default function Form(props) {
       message.success("logged in");
       setLogging(false);
 
-      const newstate = useSelector((state) => {
-        state.uid,
-          state.isAnonymous,
-          state.name,
-          state.status,
-          state.profilePic;
-      });
-      console.log(newstate);
-
       get(userRef)
         .then((snap) => {
           const result = snap.val();
@@ -57,17 +48,11 @@ export default function Form(props) {
               status: "Hi there, I am using connects app",
               like: 0,
               dislike: 0,
-              totalThumbs: "0000000000_" + user.uid,
+              likeSearchQuery: "0000000000_" + user.uid,
+              reactedTo: [],
             })
               .then(() => {
                 console.log("user has been added");
-                // dispatch(
-                //   fetchedProfile(
-                //     user.displayName,
-                //     user.photoURL,
-                //     "Hi there, I am using connects app"
-                //   )
-                // );
               })
               .catch((err) => {
                 console.log("some error");
@@ -112,19 +97,13 @@ export default function Form(props) {
               status: "Hi there, I am using connects app",
               like: 0,
               dislike: 0,
-              totalThumbs: "0000000000_" + user.uid,
+              likeSearchQuery: "0000000000_" + user.uid,
+              reactedTo: [],
             };
 
             set(userRef, addUserDetails)
               .then(() => {
                 console.log("user has been added");
-                // dispatch(
-                //   fetchedProfile(
-                //     addUserDetails.name,
-                //     addUserDetails.photo,
-                //     addUserDetails.status
-                //   )
-                // );
               })
               .catch((err) => {
                 setLogging(false);
